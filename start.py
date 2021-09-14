@@ -7,9 +7,8 @@ from service import YTService
 
 client, user = None, None
 
-videoIds = [
-    'XHlFxPRS-L8'
-]
+# Видео, которые надо заабузить
+videoIds = []
 
 try:
     with open("client.json", "r") as json_file:
