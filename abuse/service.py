@@ -10,7 +10,6 @@ class YTService:
     async def insert_comment(self, videoId: str, text: str) -> Response:
         async with Aiogoogle(user_creds=self.user_creds, client_creds=self.client_creds) as aiogoogle:
             youtube = await aiogoogle.discover("youtube", "v3")
-            print(f"Отправление комментария {text}...")
             comment = await aiogoogle.as_user(youtube.commentThreads.insert(
                 part="snippet",
                 json={
@@ -24,13 +23,11 @@ class YTService:
                     }
                 }
             ))
-            print(f"Комментарий {text} успешно отправлен.")
             return comment
 
-    async def update_comment(self, commentId: str, text: str):
+    async def update_comment(self, commentId: str, text: str) -> Response:
         async with Aiogoogle(user_creds=self.user_creds, client_creds=self.client_creds) as aiogoogle:
             youtube = await aiogoogle.discover("youtube", "v3")
-            print(f"Обновление комментария на {text}.")
             response = await aiogoogle.as_user(youtube.comments.update(
                 part="snippet",
                 json={
@@ -40,7 +37,6 @@ class YTService:
                     }
                 }
             ))
-            print(f"Комментарий успешно обновлен на {text}.")
             return response
 
     async def get_video(self, videoId: str):

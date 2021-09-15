@@ -2,8 +2,12 @@ import sys
 import json
 import asyncio
 
-from abuser import LectionAbuser
-from service import YTService
+from abuse.abuser import LectionAbuser
+from abuse.service import YTService
+
+import logging
+
+logging.basicConfig(filename='app.log', filemode='w',)
 
 client, user = None, None
 
@@ -11,14 +15,14 @@ client, user = None, None
 videoIds = []
 
 try:
-    with open("client.json", "r") as json_file:
+    with open("data/client.json", "r") as json_file:
         client = json.load(json_file)['installed']
-    with open("user.json", "r") as json_file:
+    with open("data/user.json", "r") as json_file:
         user = json.load(json_file)
-    print("Файлы успешно загружены")
+    print("Файлы успешно загружены.")
 except FileNotFoundError as e:
-    print(f"Отсутствует файл {e.filename}")
-    print("Если вы еще не авторизовывались, запустите auth.py")
+    print(f"Отсутствует файл {e.filename}.")
+    print("Если вы еще не авторизовывались, запустите auth.py.")
     exit()
 except Exception as e:
     raise e

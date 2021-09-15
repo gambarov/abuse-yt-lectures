@@ -16,20 +16,20 @@ sys.path.append("../..")
 client, user = None, None
 
 try:
-    with open("client.json", "r") as json_file:
+    with open("data/client.json", "r") as json_file:
         client = json.load(json_file)['installed']
 except FileNotFoundError:
-    print("Отсутствует файл client.json")
+    print("Отсутствует файл client.json.")
 except Exception as e:
     raise e
 
 try:
-    with open("user.json", "r") as json_file:
+    with open("data/user.json", "r") as json_file:
         user = json.load(json_file)
-        print("Файла с польз. данными успешно создан, можете запустить start.py")
+        print("Файла с польз. данными успешно создан, можете запустить start.py.")
         exit()
 except FileNotFoundError:
-    print("Файла с польз. данными не обнаружено")
+    print("Файла с польз. данными не обнаружено.")
 except Exception as e:
     raise e
 
@@ -64,7 +64,7 @@ def authorize(request):
         return response.redirect(uri)
     else:
         raise ServerError(
-            "Нет необходимых данных для авторизации (проверьте наличие файла client.json)")
+            "Нет необходимых данных для авторизации (проверьте наличие файла client.json).")
 
 
 @app.route("/callback/aiogoogle")
@@ -84,7 +84,7 @@ async def callback(request):
         user = await aiogoogle.oauth2.build_user_creds(
             grant=request.args.get("code"), client_creds=CLIENT_CREDS
         )
-        with open('user.json', "w") as json_file:
+        with open('data/user.json', "w") as json_file:
             json_file.write(json.dumps(user))
         return response.text("Авторизация прошла успешно, можете запустить start.py для начала работы.")
     else:
