@@ -12,13 +12,15 @@ logging.basicConfig(filename='app.log', filemode='w',)
 client, user = None, None
 
 # Видео, которые надо заабузить
-videoIds = []
+videoUrls = []
 
 try:
     with open("data/client.json", "r") as json_file:
         client = json.load(json_file)['installed']
     with open("data/user.json", "r") as json_file:
         user = json.load(json_file)
+    with open("data/videos.txt", "r") as file:
+        videoUrls = [row.strip() for row in file]
     print("Файлы успешно загружены.")
 except FileNotFoundError as e:
     print(f"Отсутствует файл {e.filename}.")
@@ -35,7 +37,7 @@ def main():
             asyncio.WindowsSelectorEventLoopPolicy())
     service = YTService(client_creds=client, user_creds=user)
     abuser = LectionAbuser(service=service)
-    abuser.run(videoIds=videoIds)
+    abuser.run(videoUrls=videoUrls)
 
 
 if __name__ == "__main__":
