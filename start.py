@@ -6,8 +6,12 @@ from abuse.abuser import LectionAbuser
 from abuse.service import YTService
 
 import logging
+import configparser
 
 logging.basicConfig(filename='app.log', filemode='w',)
+
+config = configparser.ConfigParser()
+config.read("config.ini")
 
 client, user = None, None
 
@@ -37,7 +41,10 @@ def main():
             asyncio.WindowsSelectorEventLoopPolicy())
     service = YTService(client_creds=client, user_creds=user)
     abuser = LectionAbuser(service=service)
-    abuser.run(videoUrls=videoUrls)
+    abuser.run(videoUrls=videoUrls, 
+               initComment=config.get('General', 'InitComment'), 
+               updComment=config.get('General', 'UpdComment'), 
+               openVideoOnError=config.getboolean('General', 'OpenVideoOnError'))
 
 
 if __name__ == "__main__":

@@ -6,6 +6,8 @@ from abuse.service import YTService
 
 import logging
 
+import webbrowser
+
 
 def YTDurationToSeconds(duration):
     match = re.match('PT(\d+H)?(\d+M)?(\d+S)?', duration).groups()
@@ -28,7 +30,7 @@ class LectionAbuser():
     def __init__(self, service: YTService) -> None:
         self.service = service
 
-    def run(self, videoUrls: list):
+    def run(self, videoUrls: list, initComment: str, updComment: str, openVideoOnError: bool):
         if (len(videoUrls)) == 0:
             print('Список видео пустой. Добавьте видео и перезапустите скрипт.')
             return
@@ -43,14 +45,15 @@ class LectionAbuser():
         index = 1
         for url in videoUrls:
             videoId = parseVideoId(url)
-            tasks.append(ioloop.create_task(self.handle(index, videoId)))
+            tasks.append(ioloop.create_task(self.handle(
+                index, videoId, initComment, updComment, openVideoOnError)))
             index = index + 1
         # Запускаем и ждем выполнения
         ioloop.run_until_complete(asyncio.wait(tasks))
         ioloop.close()
 
     # Функция написания и обновления комментария
-    async def handle(self, index, videoId):
+    async def handle(self, index, videoId, initComment: str, updComment: str, openVideoOnError: bool = False):
         index = str(index)
         # Получаем данные о видео
         try:
@@ -71,7 +74,7 @@ class LectionAbuser():
         # Пишем комментарий
         try:
             print(f"[{index}]: Отправление комментария...")
-            comment = await self.service.insert_comment(videoId=videoId, text='f1')
+            comment = await self.service.insert_comment(videoId=videoId, text=initComment)
         except Exception as e:
             print(f"[{index}]: Не удалось отправить комментарий.")
             logging.exception(e)
@@ -84,10 +87,14 @@ class LectionAbuser():
         # Обновляем комментарий
         try:
             print(f"[{index}]: Обновление комментария...")
-            await self.service.update_comment(commentId=comment['id'], text='f2')
+            await self.service.update_comment(commentId=comment['id'], text=updComment)
         except Exception as e:
-            print(f"[{index}]: Не удалось обновить комментарий.")
+            print(
+                f"[{index}]: Не удалось обновить комментарий. Попробуйте сделать это самостоятельно.")
             logging.exception(e)
+            if openVideoOnError:
+                webbrowser.open(
+                    url=f"https://www.youtube.com/watch?v={videoId}")
             return
         print(f"[{index}]: Комментарий успешно обновлен.")
         print(f"[{index}]: Успешно завершен процесс для видео \"{title}\".")
