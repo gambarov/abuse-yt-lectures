@@ -22,8 +22,8 @@ def parseInt(string):
     return int(''.join([x for x in string if x.isdigit()]))
 
 
-def parseVideoId(string):
-    return string.replace('https://www.youtube.com/watch?v=', '', 1)
+def parseVideoId(url):
+    return url.replace('https://www.youtube.com/watch?v=', '', 1)
 
 
 class LectionAbuser():
@@ -79,11 +79,12 @@ class LectionAbuser():
             print(f"[{index}]: Не удалось отправить комментарий.")
             logging.exception(e)
             return
+        logging.info(comment)
         print(f"[{index}]: Комментарий успешно отправлен.")
         print(f"[{index}]: Ожидание {duration} сек.")
 
         # "Смотрим" видео
-        await asyncio.sleep(duration + 5)
+        await asyncio.sleep(duration + 2)
         # Обновляем комментарий
         try:
             print(f"[{index}]: Обновление комментария...")

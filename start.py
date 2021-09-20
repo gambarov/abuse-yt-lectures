@@ -8,10 +8,10 @@ from abuse.service import YTService
 import logging
 import configparser
 
-logging.basicConfig(filename='app.log', filemode='w',)
+logging.basicConfig(filename='app.log', filemode='w', level=logging.INFO)
 
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read("config.ini", encoding="utf-8")
 
 client, user = None, None
 
