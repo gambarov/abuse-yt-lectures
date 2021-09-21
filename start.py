@@ -2,7 +2,7 @@ import sys
 import json
 import asyncio
 
-from abuse.abuser import LectionAbuser
+from abuse.abuser import LectureAbuser
 from abuse.service import YTService
 
 import logging
@@ -40,7 +40,7 @@ def main():
         asyncio.set_event_loop_policy(
             asyncio.WindowsSelectorEventLoopPolicy())
     service = YTService(client_creds=client, user_creds=user)
-    abuser = LectionAbuser(service=service)
+    abuser = LectureAbuser(service=service)
     abuser.run(videoUrls=videoUrls, 
                initComment=config.get('General', 'InitComment'), 
                updComment=config.get('General', 'UpdComment'), 

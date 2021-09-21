@@ -8,6 +8,8 @@ import logging
 
 import webbrowser
 
+from pprint import pformat
+
 
 def YTDurationToSeconds(duration):
     match = re.match('PT(\d+H)?(\d+M)?(\d+S)?', duration).groups()
@@ -26,7 +28,7 @@ def parseVideoId(url):
     return url.replace('https://www.youtube.com/watch?v=', '', 1)
 
 
-class LectionAbuser():
+class LectureAbuser():
     def __init__(self, service: YTService) -> None:
         self.service = service
 
@@ -52,43 +54,46 @@ class LectionAbuser():
         ioloop.run_until_complete(asyncio.wait(tasks))
         ioloop.close()
 
-    # Функция написания и обновления комментария
+
     async def handle(self, index, videoId, initComment: str, updComment: str, openVideoOnError: bool = False):
         index = str(index)
-        # Получаем данные о видео
+        video = await self.__tryGetVideoData(index, videoId)
+        if video:
+            title = video['snippet']['title']
+            print(f"[{index}]: Начат процесс для видео \"{title}\".")
+            comment = await self.__tryInsertComment(index, videoId, initComment)
+            if comment:
+                duration = YTDurationToSeconds(video['contentDetails']['duration']) + 5
+                print(f"[{index}]: Ожидание {duration} сек.")
+                await asyncio.sleep(1)
+                await self.__tryUpdateComment(index, comment['id'], videoId, updComment, openVideoOnError)
+        print(f"[{index}]: Завершен процесс для видео \"{title}\".")
+
+    async def __tryGetVideoData(self, index, videoId):
         try:
             video = await self.service.get_video(videoId)
+            return video
         except Exception as e:
-            print(
-                f"[{index}]: Не удалось начать процесс для видео {videoId} (не удалось получить данные о видео).")
+            print(f"[{index}]: Не удалось получить данные о видео.")
             logging.exception(e)
-            return
-        # Вытаскиваем нужную инфу (название, длительность)
-        title = video['snippet']['title']
-        duration = YTDurationToSeconds(
-            video['contentDetails']['duration']) + 5
-        duration = 0
-        print(
-            f"[{index}]: Начат процесс для видео \"{title}\" (ID = {videoId}).")
+            return False
 
-        # Пишем комментарий
+    async def __tryInsertComment(self, index, videoId, text):
         try:
             print(f"[{index}]: Отправление комментария...")
-            comment = await self.service.insert_comment(videoId=videoId, text=initComment)
+            comment = await self.service.insert_comment(videoId=videoId, text=text)
         except Exception as e:
             print(f"[{index}]: Не удалось отправить комментарий.")
             logging.exception(e)
-            return
-        logging.info(comment)
+            return False
+        logging.info(f"Message sended, response body:\n{pformat(comment)}")
         print(f"[{index}]: Комментарий успешно отправлен.")
-        print(f"[{index}]: Ожидание {duration} сек.")
+        return comment
 
-        # "Смотрим" видео
-        await asyncio.sleep(duration + 2)
-        # Обновляем комментарий
+    async def __tryUpdateComment(self, index, commentId, videoId, text, openVideoOnError=False):
         try:
             print(f"[{index}]: Обновление комментария...")
-            await self.service.update_comment(commentId=comment['id'], text=updComment)
+            await self.service.update_comment(commentId=commentId, text=text)
         except Exception as e:
             print(
                 f"[{index}]: Не удалось обновить комментарий. Попробуйте сделать это самостоятельно.")
@@ -96,6 +101,6 @@ class LectionAbuser():
             if openVideoOnError:
                 webbrowser.open(
                     url=f"https://www.youtube.com/watch?v={videoId}")
-            return
+            return False
         print(f"[{index}]: Комментарий успешно обновлен.")
-        print(f"[{index}]: Успешно завершен процесс для видео \"{title}\".")
+        return True
