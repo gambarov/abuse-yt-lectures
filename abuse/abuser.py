@@ -10,6 +10,7 @@ import webbrowser
 
 from pprint import pformat
 
+import requests
 
 def YTDurationToSeconds(duration):
     match = re.match('PT(\d+H)?(\d+M)?(\d+S)?', duration).groups()
@@ -56,17 +57,21 @@ class LectureAbuser():
 
     async def handle(self, index, videoId, initComment: str, updComment: str, openVideoOnError: bool = False):
         index = str(index)
-        video = await self.__tryGetVideoData(index, videoId)
-        if video:
+        try:
+            video = await self.__tryGetVideoData(index, videoId)
             title = video['snippet']['title']
             print(f"[{index}]: Начат процесс для видео \"{title}\".")
             comment = await self.__tryInsertComment(index, videoId, initComment)
-            if comment:
-                duration = YTDurationToSeconds(video['contentDetails']['duration']) + 5
-                print(f"[{index}]: Ожидание {duration} сек.")
-                await asyncio.sleep(1)
-                await self.__tryUpdateComment(index, comment['id'], videoId, updComment, openVideoOnError)
-        print(f"[{index}]: Процесс завершен.")
+            duration = YTDurationToSeconds(video['contentDetails']['duration']) + 5
+            print(f"[{index}]: Ожидание {duration} сек.")
+            await asyncio.sleep(1)
+            response = await self.__tryUpdateComment(index, comment['id'], videoId, updComment, openVideoOnError)
+            if response:
+                requests.get(f"http://hsm.ugatu.su/yt/wtload.php?videoId={videoId}")
+            print(f"[{index}]: Процесс успешно завершен.")
+        except Exception as e:
+            print(f"[{index}]: Процесс завершился с ошибкой.")
+            logging.exception(e)
 
     async def __tryGetVideoData(self, index, videoId):
         try:
