@@ -6,7 +6,8 @@
 git clone https://github.com/gambarov/abuse-yt-lectures
 pip install -r requirements.txt
 ```
-3. Запустить скрипт следующей командой:
+3. Настроить скрипт в файле config.ini 
+4. Запустить скрипт следующей командой:
 ```
 python start.py
 ```
