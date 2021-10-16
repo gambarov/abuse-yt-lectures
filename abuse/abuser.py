@@ -31,34 +31,37 @@ class LectureAbuser():
 
         time.sleep(1)
 
+        initComment = config.get('General', 'InitComment')
+        updComment = config.get('General', 'UpdComment')
+
         for videoUrl in videoUrls:
-            initComment = config.get('General', 'InitComment')
-            updComment = config.get('General', 'UpdComment')
             if not self._process_video(driver, videoUrl, initComment, updComment):
                 print(f'Не удалось обработать видео {videoUrl}.')
 
     def _auth(self, driver: webdriver.Chrome, login, password, channelName):
-        driver.get("https://accounts.google.com/signin")
-
         try:
-            loginBox = WebDriverWait(driver, 500).until(
+            driver.get("https://accounts.google.com/signin")
+
+            loginBox = WebDriverWait(driver, 15).until(
                 EC.presence_of_element_located((By.NAME, 'identifier')))
             loginBox.send_keys(login)
 
             driver.find_element(By.ID, 'identifierNext').click()
 
-            passwordBox = WebDriverWait(driver, 500).until(
+            passwordBox = WebDriverWait(driver, 15).until(
                 EC.element_to_be_clickable((By.NAME, 'password')))
             passwordBox.send_keys(password)
 
             driver.find_element(By.ID, 'passwordNext').click()
 
-            WebDriverWait(driver, 500).until(
+            # Ждем перенаправления на стр. аккаунта (сразу или после того того, как пользователь пройдет двухфакторку)
+            WebDriverWait(driver, 15).until(
                 EC.url_contains('https://myaccount.google.com/'))
 
             driver.get('https://www.youtube.com/')
 
-            accountBtn = WebDriverWait(driver, 500).until(
+            # Выбираем нужный канал, с которого будем смотреть видео
+            accountBtn = WebDriverWait(driver, 15).until(
                 EC.element_to_be_clickable(
                     (By.XPATH, f"//*[contains(text(), '{channelName}')]"))
             )
@@ -73,21 +76,21 @@ class LectureAbuser():
             print(f'Открываю видео {videoUrl}...')
             driver.get(videoUrl)
 
-            WebDriverWait(driver, 500).until(EC.presence_of_element_located(
+            WebDriverWait(driver, 15).until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="container"]/h1')))
 
             driver.execute_script("window.scrollBy(0,600)")
 
-            commentBox = WebDriverWait(driver, 10).until(
+            commentBox = WebDriverWait(driver, 15).until(
                 EC.presence_of_element_located((By.ID, 'placeholder-area')))
             commentBox.click()
 
             print(f'Пишу начальный комментарий "{initComment}"...')
-            inputBox = WebDriverWait(driver, 10).until(
+            inputBox = WebDriverWait(driver, 15).until(
                 EC.presence_of_element_located((By.ID, 'contenteditable-root')))
             inputBox.send_keys(initComment)
 
-            submitBtn = WebDriverWait(driver, 10).until(
+            submitBtn = WebDriverWait(driver, 15).until(
                 EC.presence_of_element_located((By.ID, 'submit-button')))
             submitBtn.click()
 
@@ -97,6 +100,7 @@ class LectureAbuser():
             time.sleep(duration)
             driver.execute_script("window.scrollBy(0,300)")
 
+            # Раскрываем меню действий (троеточие справа от комментария)
             driver.execute_script(
                 """isClicked=false;
                     els=document.querySelectorAll('#button');
@@ -107,11 +111,15 @@ class LectureAbuser():
                         }
                     })""")
 
-            changeBtn = WebDriverWait(driver, 500).until(EC.element_to_be_clickable(
+            changeBtn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable(
                 (By.XPATH, '//*[@id="items"]/ytd-menu-navigation-item-renderer[1]/a')))
             changeBtn.click()
 
             print(f'Обновляю комментарий на "{updComment}"...')
+
+            # Ищем вторые по списку элементы 
+            # Первые - главные эл-ты для написания нового комментария (которые выше)
+
             inputBox = driver.find_elements_by_id('contenteditable-root')[1]
             inputBox.clear()
             inputBox.send_keys(updComment)
@@ -121,6 +129,7 @@ class LectureAbuser():
 
             time.sleep(0.5)
 
+            # Отмечаем свой просмотр на сайте пердуна
             videoId = videoUrl.replace(
                 'https://www.youtube.com/watch?v=', '', 1)
             driver.get(f"http://hsm.ugatu.su/yt/wtload.php?videoId={videoId}")
