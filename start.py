@@ -1,50 +1,40 @@
-import sys
-import json
-import asyncio
-
-from abuse.abuser import LectureAbuser
-from abuse.service import YTService
+import os
 
 import logging
 import configparser
 
+from abuse.abuser import LectureAbuser
+
+import undetected_chromedriver.v2 as uc
+
 logging.basicConfig(filename='app.log', filemode='w', level=logging.INFO)
 
 config = configparser.ConfigParser()
-config.read("config.ini", encoding="utf-8")
-
-client, user = None, None
 
 # Видео, которые надо заабузить
 videoUrls = []
 
 try:
-    with open("data/client.json", "r") as json_file:
-        client = json.load(json_file)['installed']
-    with open("data/user.json", "r") as json_file:
-        user = json.load(json_file)
+    # Настройки
+    config.read("config.ini", encoding="utf-8")
+    # Список видео
     with open("data/videos.txt", "r") as file:
         videoUrls = [row.strip() for row in file]
     print("Файлы успешно загружены.")
 except FileNotFoundError as e:
     print(f"Отсутствует файл {e.filename}.")
-    print("Если вы еще не авторизовывались, запустите auth.py.")
     exit()
 except Exception as e:
     raise e
 
 
 def main():
-    # Фикс от крит. ошибки в 10 винде
-    if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
-        asyncio.set_event_loop_policy(
-            asyncio.WindowsSelectorEventLoopPolicy())
-    service = YTService(client_creds=client, user_creds=user)
-    abuser = LectureAbuser(service=service)
-    abuser.run(videoUrls=videoUrls, 
-               initComment=config.get('General', 'InitComment'), 
-               updComment=config.get('General', 'UpdComment'), 
-               openVideoOnError=config.getboolean('General', 'OpenVideoOnError'))
+    abuser = LectureAbuser()
+
+    with uc.Chrome() as driver:
+        abuser.run(driver=driver, videoUrls=videoUrls, config=config)
+
+    os.system("pause")
 
 
 if __name__ == "__main__":

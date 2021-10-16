@@ -1,110 +1,132 @@
-import sys
-import re
-import asyncio
+import time
 
-from abuse.service import YTService
+from abuse.utils import get_video_duration
 
 import logging
 
-import webbrowser
-
-from pprint import pformat
-
-import requests
-
-def YTDurationToSeconds(duration):
-    match = re.match('PT(\d+H)?(\d+M)?(\d+S)?', duration).groups()
-    hours = parseInt(match[0]) if match[0] else 0
-    minutes = parseInt(match[1]) if match[1] else 0
-    seconds = parseInt(match[2]) if match[2] else 0
-    return hours * 3600 + minutes * 60 + seconds
-
-
-def parseInt(string):
-    # js-like parseInt
-    return int(''.join([x for x in string if x.isdigit()]))
-
-
-def parseVideoId(url):
-    return url.replace('https://www.youtube.com/watch?v=', '', 1)
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 class LectureAbuser():
-    def __init__(self, service: YTService) -> None:
-        self.service = service
+    def __init__(self) -> None:
+        pass
 
-    def run(self, videoUrls: list, initComment: str, updComment: str, openVideoOnError: bool):
+    def run(self, driver: webdriver.Chrome, videoUrls: list, config):
         if (len(videoUrls)) == 0:
             print('Список видео пустой. Добавьте видео и перезапустите скрипт.')
             return
 
-        if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
-            asyncio.set_event_loop_policy(
-                asyncio.WindowsSelectorEventLoopPolicy())
+        driver.maximize_window()
 
-        ioloop = asyncio.get_event_loop()
-        tasks = []
-        # Создаем задачи для всех видео
-        index = 1
-        for url in videoUrls:
-            videoId = parseVideoId(url)
-            tasks.append(ioloop.create_task(self.handle(
-                index, videoId, initComment, updComment, openVideoOnError)))
-            index = index + 1
-        # Запускаем и ждем выполнения
-        ioloop.run_until_complete(asyncio.wait(tasks))
-        ioloop.close()
+        login = config.get('Account', 'Login')
+        password = config.get('Account', 'Password')
+        channelName = config.get('Account', 'ChannelName')
 
-    async def handle(self, index, videoId, initComment: str, updComment: str, openVideoOnError: bool = False):
-        index = str(index)
+        if not self._auth(driver, login, password, channelName):
+            print('Не удалось авторизоваться, попробуйте еще раз.')
+            return
+
+        time.sleep(1)
+
+        for videoUrl in videoUrls:
+            initComment = config.get('General', 'InitComment')
+            updComment = config.get('General', 'UpdComment')
+            if not self._process_video(driver, videoUrl, initComment, updComment):
+                print(f'Не удалось обработать видео {videoUrl}.')
+
+    def _auth(self, driver: webdriver.Chrome, login, password, channelName):
+        driver.get("https://accounts.google.com/signin")
+
         try:
-            video = await self.__tryGetVideoData(index, videoId)
-            title = video['snippet']['title']
-            print(f"[{index}]: Начат процесс для видео \"{title}\".")
-            comment = await self.__tryInsertComment(index, videoId, initComment)
-            duration = YTDurationToSeconds(video['contentDetails']['duration']) + 5
-            print(f"[{index}]: Ожидание {duration} сек.")
-            await asyncio.sleep(1)
-            response = await self.__tryUpdateComment(index, comment['id'], videoId, updComment, openVideoOnError)
-            if response:
-                requests.get(f"http://hsm.ugatu.su/yt/wtload.php?videoId={videoId}")
-            print(f"[{index}]: Процесс успешно завершен.")
-        except Exception as e:
-            print(f"[{index}]: Процесс завершился с ошибкой.")
-            logging.exception(e)
+            loginBox = WebDriverWait(driver, 500).until(
+                EC.presence_of_element_located((By.NAME, 'identifier')))
+            loginBox.send_keys(login)
 
-    async def __tryGetVideoData(self, index, videoId):
-        try:
-            video = await self.service.get_video(videoId)
-            return video
-        except Exception as e:
-            print(f"[{index}]: Не удалось получить данные о видео.")
-            logging.exception(e)
-            return False
+            driver.find_element(By.ID, 'identifierNext').click()
 
-    async def __tryInsertComment(self, index, videoId, text):
-        try:
-            print(f"[{index}]: Отправление комментария...")
-            comment = await self.service.insert_comment(videoId=videoId, text=text)
-            print(f"[{index}]: Комментарий успешно отправлен.")
-            logging.info(f"Message sended, response body:\n{pformat(comment)}")
-            return comment
-        except Exception as e:
-            print(f"[{index}]: Не удалось отправить комментарий.")
-            logging.exception(e)
-            return False
+            passwordBox = WebDriverWait(driver, 500).until(
+                EC.element_to_be_clickable((By.NAME, 'password')))
+            passwordBox.send_keys(password)
 
-    async def __tryUpdateComment(self, index, commentId, videoId, text, openVideoOnError=False):
-        try:
-            print(f"[{index}]: Обновление комментария...")
-            response = await self.service.update_comment(commentId=commentId, text=text)
-            print(f"[{index}]: Комментарий успешно обновлен.")
-            return response
+            driver.find_element(By.ID, 'passwordNext').click()
+
+            WebDriverWait(driver, 500).until(
+                EC.url_contains('https://myaccount.google.com/'))
+
+            driver.get('https://www.youtube.com/')
+
+            accountBtn = WebDriverWait(driver, 500).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, f"//*[contains(text(), '{channelName}')]"))
+            )
+            accountBtn.click()
+            return True
         except Exception as e:
-            print(
-                f"[{index}]: Не удалось обновить комментарий, попробуйте сделать это самостоятельно.")
             logging.exception(e)
-            if openVideoOnError:
-                webbrowser.open(
-                    url=f"https://www.youtube.com/watch?v={videoId}")
-            return False
+        return False
+
+    def _process_video(self, driver, videoUrl, initComment, updComment):
+        try:
+            print(f'Открываю видео {videoUrl}...')
+            driver.get(videoUrl)
+
+            WebDriverWait(driver, 500).until(EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="container"]/h1')))
+
+            driver.execute_script("window.scrollBy(0,600)")
+
+            commentBox = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, 'placeholder-area')))
+            commentBox.click()
+
+            print(f'Пишу начальный комментарий "{initComment}"...')
+            inputBox = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, 'contenteditable-root')))
+            inputBox.send_keys(initComment)
+
+            submitBtn = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, 'submit-button')))
+            submitBtn.click()
+
+            duration = get_video_duration(driver)
+            print(f'Ожидаю {duration} секунд...')
+
+            time.sleep(duration)
+            driver.execute_script("window.scrollBy(0,300)")
+
+            driver.execute_script(
+                """isClicked=false;
+                    els=document.querySelectorAll('#button');
+                    els.forEach((el)=>{
+                        if(el.ariaLabel=='Меню действий'&&isClicked==false){
+                            el.click();
+                            isClicked=true
+                        }
+                    })""")
+
+            changeBtn = WebDriverWait(driver, 500).until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="items"]/ytd-menu-navigation-item-renderer[1]/a')))
+            changeBtn.click()
+
+            print(f'Обновляю комментарий на "{updComment}"...')
+            inputBox = driver.find_elements_by_id('contenteditable-root')[1]
+            inputBox.clear()
+            inputBox.send_keys(updComment)
+
+            submitBtn = driver.find_elements_by_id('submit-button')[1]
+            submitBtn.click()
+
+            time.sleep(0.5)
+
+            videoId = videoUrl.replace(
+                'https://www.youtube.com/watch?v=', '', 1)
+            driver.get(f"http://hsm.ugatu.su/yt/wtload.php?videoId={videoId}")
+            time.sleep(0.25)
+            logging.info(f'Success for {videoUrl}')
+            return True
+        except Exception as e:
+            logging.exception(e)
+        return False
