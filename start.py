@@ -7,6 +7,7 @@ from abuse.abuser import LectureAbuser
 
 import undetected_chromedriver.v2 as uc
 
+
 logging.basicConfig(filename='app.log', filemode='w', level=logging.INFO)
 
 config = configparser.ConfigParser()
@@ -29,10 +30,9 @@ except Exception as e:
 
 
 def main():
-    abuser = LectureAbuser()
-
     with uc.Chrome() as driver:
-        abuser.run(driver=driver, videoUrls=videoUrls, config=config)
+        abuser = LectureAbuser(driver)
+        abuser.run(videoUrls=videoUrls, config=config)
 
     os.system("pause")
 

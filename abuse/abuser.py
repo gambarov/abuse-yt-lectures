@@ -1,6 +1,6 @@
 import time
 
-from abuse.utils import get_video_duration
+from abuse.service import YTService
 
 import logging
 
@@ -8,25 +8,25 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 
 
 class LectureAbuser():
-    def __init__(self) -> None:
-        pass
+    def __init__(self, driver: webdriver.Chrome) -> None:
+        self.service = YTService(driver)
+        self.driver = driver
 
-    def run(self, driver: webdriver.Chrome, videoUrls: list, config):
+    def run(self, videoUrls: list, config):
         if (len(videoUrls)) == 0:
             print('Список видео пустой. Добавьте видео и перезапустите скрипт.')
             return
 
-        driver.maximize_window()
+        self.driver.maximize_window()
 
         login = config.get('Account', 'Login')
         password = config.get('Account', 'Password')
         channelName = config.get('Account', 'ChannelName')
 
-        if not self._auth(driver, login, password, channelName):
+        if not self.service.auth(login, password, channelName):
             print('Не удалось авторизоваться, попробуйте еще раз.')
             return
 
@@ -36,121 +36,49 @@ class LectureAbuser():
         updComment = config.get('General', 'UpdComment')
 
         for videoUrl in videoUrls:
-            if not self._process_video(driver, videoUrl, initComment, updComment):
+            if not self.process_video(videoUrl, initComment, updComment):
                 print(f'Не удалось обработать видео {videoUrl}.')
                 time.sleep(1000)
 
-    def _auth(self, driver: webdriver.Chrome, login, password, channelName):
+    def process_video(self, videoUrl, initComment, updComment):
         try:
-            driver.get("https://accounts.google.com/signin")
-
-            loginBox = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.NAME, 'identifier')))
-            loginBox.send_keys(login)
-
-            driver.find_element(By.ID, 'identifierNext').click()
-
-            passwordBox = WebDriverWait(driver, 15).until(
-                EC.element_to_be_clickable((By.NAME, 'password')))
-            passwordBox.send_keys(password)
-
-            driver.find_element(By.ID, 'passwordNext').click()
-
-            # Ждем перенаправления на стр. аккаунта (сразу или после того того, как пользователь пройдет двухфакторку)
-            WebDriverWait(driver, 120).until(
-                EC.url_contains('https://myaccount.google.com/'))
-
-            driver.get('https://www.youtube.com/')
-
-            # Выбираем нужный канал, с которого будем смотреть видео
-            accountBtn = WebDriverWait(driver, 15).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, f"//*[contains(text(), '{channelName}')]"))
-            )
-            accountBtn.click()
-            return True
-        except Exception as e:
-            logging.exception(e)
-        return False
-
-    def _process_video(self, driver: webdriver.Chrome, videoUrl, initComment, updComment):
-        try:
-            print(f'Открываю видео {videoUrl}...')
-            driver.get(videoUrl)
-
-            # Пропуск возможной рекламы
-            try:
-                skipBtn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable(
-                    (By.XPATH, '//*[@id="skip-button:6"]/span/button')))
-                skipBtn.click()
-            except TimeoutException as e:
-                logging.info(f'No ads for video {videoUrl}')
-            except Exception as e:
-                logging.exception(e)
+            print(f'Открытие видео {videoUrl}...')
+            self.driver.get(videoUrl)
 
             # Ждем загрузки страницы
-            WebDriverWait(driver, 15).until(EC.presence_of_element_located(
+            WebDriverWait(self.driver, 15).until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="container"]/h1')))
 
+            # Пропуск возможной рекламы
+            if self.service.skip_ad():
+                print('Реклама обнаружена, пропуск...')
+
             # Проматываем вниз, чтобы открыть комменты
-            driver.execute_script("window.scrollBy(0,600)")
+            self.driver.execute_script("window.scrollBy(0,600)")
 
-            commentBox = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.ID, 'placeholder-area')))
-            commentBox.click()
+            if self.service.insert_comment(initComment):
+                print(f'Написан начальный комментарий "{initComment}".')
 
-            print(f'Пишу начальный комментарий "{initComment}"...')
-            inputBox = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.ID, 'contenteditable-root')))
-            inputBox.send_keys(initComment)
-
-            submitBtn = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.ID, 'submit-button')))
-            submitBtn.click()
-
-            # Останавливаем видео
-            driver.execute_script(
+            duration = self.service.get_video_duration()
+            print(f'Ожидание {duration} секунд...')
+            time.sleep(duration / 2)
+            # Останавливаем видео на половине
+            # Если остановить в начале, то гугл может посчитать за спам
+            self.driver.execute_script(
                 "document.getElementsByClassName('ytp-large-play-button')[0].click()")
+            time.sleep(duration / 2 + 5)
 
-            duration = get_video_duration(driver)
-            print(f'Ожидаю {duration} секунд...')
+            self.driver.execute_script("window.scrollBy(0,300)")
 
-            time.sleep(duration + 5)
-            driver.execute_script("window.scrollBy(0,300)")
-
-            # Раскрываем меню действий (троеточие справа от комментария)
-            driver.execute_script(
-                """isClicked=false;
-                    els=document.querySelectorAll('#button');
-                    els.forEach((el)=>{
-                        if(el.ariaLabel=='Меню действий'&&isClicked==false){
-                            el.click();
-                            isClicked=true
-                        }
-                    })""")
-
-            changeBtn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable(
-                (By.XPATH, '//*[@id="items"]/ytd-menu-navigation-item-renderer[1]/a')))
-            changeBtn.click()
-
-            print(f'Обновляю комментарий на "{updComment}"...')
-
-            # Ищем вторые по списку элементы
-            # Первые - главные эл-ты для написания нового комментария (которые выше)
-
-            inputBox = driver.find_elements_by_id('contenteditable-root')[1]
-            inputBox.clear()
-            inputBox.send_keys(updComment)
-
-            submitBtn = driver.find_elements_by_id('submit-button')[1]
-            submitBtn.click()
+            if self.service.update_comment(updComment):
+                print(f'Комментарий обновлен на "{updComment}".')
 
             time.sleep(1)
 
             # Отмечаем свой просмотр на сайте пердуна
             videoId = videoUrl.replace(
                 'https://www.youtube.com/watch?v=', '', 1)
-            driver.get(f"http://hsm.ugatu.su/yt/wtload.php?videoId={videoId}")
+            self.driver.get(f"http://hsm.ugatu.su/yt/wtload.php?videoId={videoId}")
 
             time.sleep(1)
 
