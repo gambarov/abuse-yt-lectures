@@ -8,6 +8,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 
 class LectureAbuser():
@@ -37,6 +38,7 @@ class LectureAbuser():
         for videoUrl in videoUrls:
             if not self._process_video(driver, videoUrl, initComment, updComment):
                 print(f'Не удалось обработать видео {videoUrl}.')
+                time.sleep(1000)
 
     def _auth(self, driver: webdriver.Chrome, login, password, channelName):
         try:
@@ -55,7 +57,7 @@ class LectureAbuser():
             driver.find_element(By.ID, 'passwordNext').click()
 
             # Ждем перенаправления на стр. аккаунта (сразу или после того того, как пользователь пройдет двухфакторку)
-            WebDriverWait(driver, 15).until(
+            WebDriverWait(driver, 120).until(
                 EC.url_contains('https://myaccount.google.com/'))
 
             driver.get('https://www.youtube.com/')
@@ -71,14 +73,26 @@ class LectureAbuser():
             logging.exception(e)
         return False
 
-    def _process_video(self, driver, videoUrl, initComment, updComment):
+    def _process_video(self, driver: webdriver.Chrome, videoUrl, initComment, updComment):
         try:
             print(f'Открываю видео {videoUrl}...')
             driver.get(videoUrl)
 
+            # Пропуск возможной рекламы
+            try:
+                skipBtn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable(
+                    (By.XPATH, '//*[@id="skip-button:6"]/span/button')))
+                skipBtn.click()
+            except TimeoutException as e:
+                logging.info(f'No ads for video {videoUrl}')
+            except Exception as e:
+                logging.exception(e)
+
+            # Ждем загрузки страницы
             WebDriverWait(driver, 15).until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="container"]/h1')))
 
+            # Проматываем вниз, чтобы открыть комменты
             driver.execute_script("window.scrollBy(0,600)")
 
             commentBox = WebDriverWait(driver, 15).until(
@@ -94,10 +108,14 @@ class LectureAbuser():
                 EC.presence_of_element_located((By.ID, 'submit-button')))
             submitBtn.click()
 
+            # Останавливаем видео
+            driver.execute_script(
+                "document.getElementsByClassName('ytp-large-play-button')[0].click()")
+
             duration = get_video_duration(driver)
             print(f'Ожидаю {duration} секунд...')
 
-            time.sleep(duration)
+            time.sleep(duration + 5)
             driver.execute_script("window.scrollBy(0,300)")
 
             # Раскрываем меню действий (троеточие справа от комментария)
@@ -117,7 +135,7 @@ class LectureAbuser():
 
             print(f'Обновляю комментарий на "{updComment}"...')
 
-            # Ищем вторые по списку элементы 
+            # Ищем вторые по списку элементы
             # Первые - главные эл-ты для написания нового комментария (которые выше)
 
             inputBox = driver.find_elements_by_id('contenteditable-root')[1]
@@ -127,14 +145,17 @@ class LectureAbuser():
             submitBtn = driver.find_elements_by_id('submit-button')[1]
             submitBtn.click()
 
-            time.sleep(0.5)
+            time.sleep(1)
 
             # Отмечаем свой просмотр на сайте пердуна
             videoId = videoUrl.replace(
                 'https://www.youtube.com/watch?v=', '', 1)
             driver.get(f"http://hsm.ugatu.su/yt/wtload.php?videoId={videoId}")
-            time.sleep(0.25)
+
+            time.sleep(1)
+
             logging.info(f'Success for {videoUrl}')
+            print(f'Успешно просмотрено видео {videoUrl}')
             return True
         except Exception as e:
             logging.exception(e)
