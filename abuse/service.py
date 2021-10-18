@@ -13,7 +13,7 @@ class YTService:
     def __init__(self, driver: webdriver.Chrome) -> None:
         self.driver = driver
 
-    def auth(self, login, password, channelName):
+    def auth(self, login: str, password: str):
         try:
             self.driver.get("https://accounts.google.com/signin")
 
@@ -32,13 +32,18 @@ class YTService:
             # Ждем перенаправления на стр. аккаунта (сразу или после того того, как пользователь пройдет двухфакторку)
             wait(self.driver, 120).until(
                 EC.url_contains('https://myaccount.google.com/'))
+            return True
+        except Exception as e:
+            logging.exception(e)
+        return False
 
+    def select_channel(self, name: str):
+        try:
             self.driver.get('https://www.youtube.com/')
-
             # Выбираем нужный канал, с которого будем смотреть видео
             accountBtn = wait(self.driver, 15).until(
                 EC.element_to_be_clickable(
-                    (By.XPATH, f"//*[contains(text(), '{channelName}')]"))
+                    (By.XPATH, f"//*[contains(text(), '{name}')]"))
             )
             accountBtn.click()
             return True
@@ -54,7 +59,7 @@ class YTService:
             minutes=duration.tm_min, seconds=duration.tm_sec).total_seconds()
         return int(seconds)
 
-    def insert_comment(self, initComment):
+    def insert_comment(self, initComment: str):
         # Кликаем на поле для написания коммента
         commentBox = wait(self.driver, 15).until(
             EC.presence_of_element_located((By.ID, 'placeholder-area')))
@@ -71,7 +76,7 @@ class YTService:
         submitBtn.click()
         return True
 
-    def update_comment(self, updComment):
+    def update_comment(self, updComment: str):
         # Раскрываем меню действий (троеточие справа от комментария)
         self.driver.execute_script("document.querySelector('button[aria-label=\"Меню действий\"]').click()")
 

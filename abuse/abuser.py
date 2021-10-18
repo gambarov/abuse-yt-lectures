@@ -24,11 +24,14 @@ class LectureAbuser():
 
         print('Авторизация...')
 
-        if not self.service.auth(
-                config.get('Account', 'Login'),
-                config.get('Account', 'Password'),
-                config.get('Account', 'ChannelName')):
+        if not self.service.auth(config.get('Account', 'Login'), config.get('Account', 'Password')):
             print('Не удалось авторизоваться, попробуйте еще раз.')
+            return
+
+        print('Выбор канала...')
+
+        if not self.service.select_channel(config.get('Account', 'ChannelName')):
+            print('Не удалось выбрать канал YouTube, убедитесь что в названии канала нет ошибок')
             return
 
         time.sleep(1)
@@ -40,11 +43,12 @@ class LectureAbuser():
                 print(f'Не удалось обработать видео {videoUrl}.')
                 time.sleep(1000)
             else:
-                print(f'Успешно просмотрено видео {videoUrl}')
+                print(f'Успешно обработано видео {videoUrl}')
 
     def process_video(self, videoUrl: str, initComment: str, updComment: str, delay: int = None):
         try:
             print(f'Открытие видео {videoUrl}...')
+
             self.driver.get(videoUrl)
 
             # Ждем загрузки страницы
@@ -78,6 +82,8 @@ class LectureAbuser():
                 print(f'Комментарий обновлен на "{updComment}".')
 
             time.sleep(1)
+
+            print(f'Регистрация просмотра на сайте...')
 
             # Отмечаем свой просмотр на сайте пердуна
             videoId = videoUrl.replace(
