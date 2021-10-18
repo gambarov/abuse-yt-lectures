@@ -2,6 +2,7 @@ import os
 
 import logging
 import configparser
+import argparse
 
 from abuse.abuser import LectureAbuser
 
@@ -11,6 +12,11 @@ import undetected_chromedriver.v2 as uc
 logging.basicConfig(filename='app.log', filemode='w', level=logging.INFO)
 
 config = configparser.ConfigParser()
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--headless', action='store_true')
+
+args = parser.parse_args()
 
 # Видео, которые надо заабузить
 videoUrls = []
@@ -30,7 +36,7 @@ except Exception as e:
 
 
 def main():
-    with uc.Chrome() as driver:
+    with uc.Chrome(headless=args.headless) as driver:
         abuser = LectureAbuser(driver)
         abuser.run(videoUrls=videoUrls, config=config)
 
