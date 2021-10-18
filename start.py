@@ -38,7 +38,9 @@ except Exception as e:
 def main():
     with uc.Chrome(headless=args.headless) as driver:
         abuser = LectureAbuser(driver)
-        abuser.run(videoUrls=videoUrls, config=config)
+        # В случае ошибки делаем скриншот
+        if not abuser.run(videoUrls=videoUrls, config=config):
+            driver.get_screenshot_as_file("error.png")
 
     os.system("pause")
 

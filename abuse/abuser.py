@@ -41,9 +41,10 @@ class LectureAbuser():
                     config.get('General', 'InitComment'),
                     config.get('General', 'UpdComment')):
                 print(f'Не удалось обработать видео {videoUrl}.')
-                time.sleep(1000)
+                return
             else:
                 print(f'Успешно обработано видео {videoUrl}')
+        return True
 
     def process_video(self, videoUrl: str, initComment: str, updComment: str, delay: float = None):
         try:
