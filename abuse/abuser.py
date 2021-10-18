@@ -45,28 +45,30 @@ class LectureAbuser():
             else:
                 print(f'Успешно обработано видео {videoUrl}')
 
-    def process_video(self, videoUrl: str, initComment: str, updComment: str, delay: int = None):
+    def process_video(self, videoUrl: str, initComment: str, updComment: str, delay: float = None):
         try:
             print(f'Открытие видео {videoUrl}...')
 
             self.driver.get(videoUrl)
 
             # Ждем загрузки страницы
-            wait(self.driver, 15).until(EC.presence_of_element_located(
+            title = wait(self.driver, 15).until(EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="container"]/h1')))
 
             # Пропуск возможной рекламы
             if self.service.skip_ad():
                 print('Реклама обнаружена, пропуск...')
 
+            # Получаем длительность видео, если нужно
+            # ВНИМАНИЕ: получить длительность нужно обязательно после пропуска рекламы!
+            if delay is None:
+                delay = self.service.get_video_duration()
+
             # Проматываем вниз, чтобы открыть комменты
-            self.driver.execute_script("window.scrollBy(0,600)")
+            self.driver.execute_script("arguments[0].scrollIntoView();", title)
 
             if self.service.insert_comment(initComment):
                 print(f'Написан начальный комментарий "{initComment}".')
-
-            if delay is None:
-                delay = self.service.get_video_duration()
 
             print(f'Ожидание {delay} секунд...')
             time.sleep(delay / 2)
@@ -74,9 +76,10 @@ class LectureAbuser():
             # Если остановить в начале, то гугл может посчитать за спам
             self.driver.execute_script(
                 "document.getElementsByClassName('ytp-large-play-button')[0].click()")
-            time.sleep(delay / 2 + 5)
+            time.sleep((delay / 2) + 2.5)
 
-            self.driver.execute_script("window.scrollBy(0,300)")
+            # Перед обновлением снова проматываем, на всякий случай
+            self.driver.execute_script("arguments[0].scrollIntoView();", title)
 
             if self.service.update_comment(updComment):
                 print(f'Комментарий обновлен на "{updComment}".')
