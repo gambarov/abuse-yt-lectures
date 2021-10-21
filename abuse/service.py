@@ -51,12 +51,15 @@ class YTService:
             logging.exception(e)
         return False
 
-    def get_video_duration(self) -> float:
-        duration = self.driver.find_element(
-            By.XPATH, "//span[@class='ytp-time-duration']").text
-        t = time.strptime(duration, '%M:%S')
-        return datetime.timedelta(
-            minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
+    def get_video_duration(self):
+        try:
+            duration = wait(self.driver, 15).until(EC.presence_of_element_located(
+                (By.XPATH, "//span[@class='ytp-time-duration']"))).text
+            t = time.strptime(duration, '%M:%S')
+            return datetime.timedelta(
+                minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
+        except Exception as e:
+            logging.exception(e)
 
     def insert_comment(self, initComment: str) -> bool:
         # Кликаем на поле для написания коммента
@@ -98,7 +101,7 @@ class YTService:
     def skip_ad(self):
         # Пытаемся найти кнопку скипа рекламы (если есть, кнопка кликабельна через 5 сек.)
         try:
-            if self.driver.find_element(By.XPATH, '//*[contains(@class, "ytp-ad")]'):
+            if self.driver.find_element(By.XPATH, '//*[contains(@class, "ytp-ad-image")]'):
                 skipBtn = wait(self.driver, 15).until(EC.element_to_be_clickable(
                     (By.XPATH, '//*[@id="skip-button:6"]/span/button')))
                 skipBtn.click()

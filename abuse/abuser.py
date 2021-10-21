@@ -64,6 +64,9 @@ class LectureAbuser():
             # ВНИМАНИЕ: получить длительность нужно обязательно после пропуска рекламы!
             if delay is None:
                 delay = self.service.get_video_duration()
+                if delay is None:
+                    print('Не удалось получить длительность видео.')
+                    return False
 
             # Проматываем вниз, чтобы открыть комменты
             self.driver.execute_script("arguments[0].scrollIntoView();", title)
