@@ -61,42 +61,50 @@ class YTService:
         except Exception as e:
             logging.exception(e)
 
-    def insert_comment(self, initComment: str) -> bool:
-        # Кликаем на поле для написания коммента
-        commentBox = wait(self.driver, 15).until(
-            EC.presence_of_element_located((By.ID, 'placeholder-area')))
-        commentBox.click()
+    def insert_comment(self, initComment: str):
+        try:
+            # Кликаем на поле для написания коммента
+            commentBox = wait(self.driver, 15).until(
+                EC.presence_of_element_located((By.ID, 'placeholder-area')))
+            commentBox.click()
 
-        # Печатаем комментарий
-        inputBox = wait(self.driver, 15).until(
-            EC.presence_of_element_located((By.ID, 'contenteditable-root')))
-        inputBox.send_keys(initComment)
+            # Печатаем комментарий
+            inputBox = wait(self.driver, 15).until(
+                EC.presence_of_element_located((By.ID, 'contenteditable-root')))
+            inputBox.send_keys(initComment)
 
-        # Отправляем комментарий
-        submitBtn = wait(self.driver, 15).until(
-            EC.presence_of_element_located((By.ID, 'submit-button')))
-        submitBtn.click()
-        return True
+            # Отправляем комментарий
+            submitBtn = wait(self.driver, 15).until(
+                EC.presence_of_element_located((By.ID, 'submit-button')))
+            submitBtn.click()
+            return True
+        except Exception as e:
+            logging.exception(e)
+        return False
 
     def update_comment(self, updComment: str):
-        # Раскрываем меню действий (троеточие справа от комментария)
-        self.driver.execute_script(
-            "document.querySelector('button[aria-label=\"Меню действий\"]').click()")
+        try:
+            # Раскрываем меню действий (троеточие справа от комментария)
+            self.driver.execute_script(
+                "document.querySelector('button[aria-label=\"Меню действий\"]').click()")
 
-        # Выбираем пункт с редактированием коммента
-        changeBtn = wait(self.driver, 15).until(EC.element_to_be_clickable(
-            (By.XPATH, '//*[@id="items"]/ytd-menu-navigation-item-renderer[1]/a')))
-        changeBtn.click()
+            # Выбираем пункт с редактированием коммента
+            changeBtn = wait(self.driver, 15).until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="items"]/ytd-menu-navigation-item-renderer[1]/a')))
+            changeBtn.click()
 
-        # Ищем вторые по списку элементы
-        # Первые - главные эл-ты для написания нового комментария (которые выше)
-        inputBox = self.driver.find_elements(By.ID, 'contenteditable-root')[1]
-        inputBox.clear()
-        inputBox.send_keys(updComment)
+            # Ищем вторые по списку элементы
+            # Первые - главные эл-ты для написания нового комментария (которые выше)
+            inputBox = self.driver.find_elements(By.ID, 'contenteditable-root')[1]
+            inputBox.clear()
+            inputBox.send_keys(updComment)
 
-        submitBtn = self.driver.find_elements(By.ID, 'submit-button')[1]
-        submitBtn.click()
-        return True
+            submitBtn = self.driver.find_elements(By.ID, 'submit-button')[1]
+            submitBtn.click()
+            return True
+        except Exception as e:
+            logging.exception(e)
+        return False
 
     def skip_ad(self):
         # Пытаемся найти кнопку скипа рекламы (если есть, кнопка кликабельна через 5 сек.)

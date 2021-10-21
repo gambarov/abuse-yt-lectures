@@ -26,22 +26,22 @@ class LectureAbuser():
 
         if not self.service.auth(config.get('Account', 'Login'), config.get('Account', 'Password')):
             print('Не удалось авторизоваться, попробуйте еще раз.')
-            return
+            return False
 
         print('Выбор канала...')
 
         if not self.service.select_channel(config.get('Account', 'ChannelName')):
-            print('Не удалось выбрать канал YouTube, убедитесь что в названии канала нет ошибок')
-            return
+            print('Не удалось выбрать канал YouTube')
+            return False
 
         time.sleep(1)
 
         for videoUrl in videoUrls:
             if not self.process_video(videoUrl,
-                    config.get('General', 'InitComment'),
-                    config.get('General', 'UpdComment')):
+                                      config.get('General', 'InitComment'),
+                                      config.get('General', 'UpdComment')):
                 print(f'Не удалось обработать видео {videoUrl}.')
-                return
+                return False
             else:
                 print(f'Успешно обработано видео {videoUrl}')
         return True
@@ -64,20 +64,25 @@ class LectureAbuser():
             # ВНИМАНИЕ: получить длительность нужно обязательно после пропуска рекламы!
             if delay is None:
                 delay = self.service.get_video_duration()
+                # В случае неуспеха пытаемся снова
                 if delay is None:
-                    print('Не удалось получить длительность видео.')
-                    return False
+                    print('Не удалось получить длительность видео, новая попытка...')
+                    return self.process_video(videoUrl, initComment, updComment)
 
             # Проматываем вниз, чтобы открыть комменты
             self.driver.execute_script("arguments[0].scrollIntoView();", title)
 
-            if self.service.insert_comment(initComment):
+            if not self.service.insert_comment(initComment):
+                print(f'Не удалось написать комментарий.')
+                return False
+            else:
                 print(f'Написан начальный комментарий "{initComment}".')
 
             print(f'Ожидание {delay} секунд...')
-            time.sleep(delay / 2)
+
             # Останавливаем видео на половине
-            # Если остановить в начале, то гугл может посчитать за спам
+            # Если остановить сразу в начале, то гугл может посчитать за спам
+            time.sleep(delay / 2)
             self.driver.execute_script(
                 "document.getElementsByClassName('ytp-large-play-button')[0].click()")
             time.sleep((delay / 2) + 2.5)
@@ -85,14 +90,17 @@ class LectureAbuser():
             # Перед обновлением снова проматываем, на всякий случай
             self.driver.execute_script("arguments[0].scrollIntoView();", title)
 
-            if self.service.update_comment(updComment):
+            if not self.service.update_comment(updComment):
+                print(f'Не удалось обновить комментарий.')
+                return False
+            else:
                 print(f'Комментарий обновлен на "{updComment}".')
 
             time.sleep(1)
 
             print(f'Регистрация просмотра на сайте...')
 
-            # Отмечаем свой просмотр на сайте пердуна
+            # Отмечаем просмотр на сайте
             videoId = videoUrl.replace(
                 'https://www.youtube.com/watch?v=', '', 1)
             self.driver.get(
