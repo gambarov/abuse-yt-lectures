@@ -1,6 +1,6 @@
 import time
 
-from abuse.service import YTService
+from .service import YTService
 
 import logging
 
@@ -80,12 +80,7 @@ class LectureAbuser():
 
             print(f'Ожидание {delay} секунд...')
 
-            # Останавливаем видео на половине
-            # Если остановить сразу в начале, то гугл может посчитать за спам
-            time.sleep(delay / 2)
-            self.driver.execute_script(
-                "document.getElementsByClassName('ytp-large-play-button')[0].click()")
-            time.sleep((delay / 2) + 2.5)
+            self.service.wait_with_actions(delay)
 
             # Перед обновлением снова проматываем, на всякий случай
             self.driver.execute_script("arguments[0].scrollIntoView();", title)

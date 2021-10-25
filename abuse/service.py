@@ -1,6 +1,7 @@
 import time
 import datetime
 import logging
+import random
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
@@ -55,9 +56,13 @@ class YTService:
         try:
             duration = wait(self.driver, 15).until(EC.presence_of_element_located(
                 (By.XPATH, "//span[@class='ytp-time-duration']"))).text
-            t = time.strptime(duration, '%M:%S')
-            return datetime.timedelta(
-                minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
+            # Если длительность только в минутах и секундах
+            try:
+                t = time.strptime(duration, '%M:%S')
+            # Если длительность в часах, минутах и секундах
+            except ValueError:
+                t = time.strptime(duration, '%H:%M:%S')
+            return datetime.timedelta(hours=t.tm_hour, minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
         except Exception as e:
             logging.exception(e)
 
@@ -95,7 +100,8 @@ class YTService:
 
             # Ищем вторые по списку элементы
             # Первые - главные эл-ты для написания нового комментария (которые выше)
-            inputBox = self.driver.find_elements(By.ID, 'contenteditable-root')[1]
+            inputBox = self.driver.find_elements(
+                By.ID, 'contenteditable-root')[1]
             inputBox.clear()
             inputBox.send_keys(updComment)
 
@@ -120,3 +126,24 @@ class YTService:
         except Exception as e:
             logging.exception(e)
         return False
+
+    def wait_with_actions(self, delay: float):
+        # Останавливаем видео на половине
+        # Если остановить сразу в начале, то гугл может посчитать за спам
+        pause_time = delay / 2
+        while delay > 0:
+            # Пришло время остановить видео
+            if delay <= pause_time:
+                self.driver.execute_script(
+                    "document.getElementsByClassName('ytp-large-play-button')[0].click()")
+            # Делаем случайный скролл
+            self.driver.execute_script(
+                "window.scrollBy({{top:{},left:0,behavior:'smooth'}})".format(
+                    str(random.randint(-1000, 500)))
+            )
+            # Между действиями ждем случайный промежуток времени
+            d = random.randint(30, 60)
+            # Задержка не может быть больше оставшейся
+            d = delay if d > delay else d
+            delay = delay - d
+            time.sleep(d)
