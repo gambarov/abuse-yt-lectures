@@ -15,7 +15,16 @@ class LectureAbuser():
         self.service = YTService(driver)
         self.driver = driver
 
-    def run(self, videoUrls: list, config):
+    def run(
+        self,
+        videoUrls: list,
+        login: str,
+        password: str,
+        channelName: str,
+        initComment: str,
+        updComment: str,
+        ignoreOnError: bool = False
+    ):
         if (len(videoUrls)) == 0:
             print('Список видео пустой. Добавьте видео и перезапустите скрипт.')
             return
@@ -24,24 +33,24 @@ class LectureAbuser():
 
         print('Авторизация...')
 
-        if not self.service.auth(config.get('Account', 'Login'), config.get('Account', 'Password')):
+        if not self.service.auth(login, password):
             print('Не удалось авторизоваться, попробуйте еще раз.')
             return False
 
         print('Выбор канала...')
 
-        if not self.service.select_channel(config.get('Account', 'ChannelName')):
+        if not self.service.select_channel(channelName):
             print('Не удалось выбрать канал YouTube')
             return False
 
         time.sleep(1)
 
         for videoUrl in videoUrls:
-            if not self.process_video(videoUrl,
-                                      config.get('General', 'InitComment'),
-                                      config.get('General', 'UpdComment')):
+            if not self.process_video(videoUrl, initComment, updComment):
                 print(f'Не удалось обработать видео {videoUrl}.')
-                return False
+                self.driver.get_screenshot_as_file(f"logs/errors/{videoUrl}.png")
+                if not ignoreOnError:
+                    return False
             else:
                 print(f'Успешно обработано видео {videoUrl}')
         return True

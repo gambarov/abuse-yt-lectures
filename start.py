@@ -9,7 +9,7 @@ from abuse.abuser import LectureAbuser
 import undetected_chromedriver.v2 as uc
 
 
-logging.basicConfig(filename='app.log', filemode='w', level=logging.INFO)
+logging.basicConfig(filename='logs/app.log', filemode='w', level=logging.INFO)
 
 config = configparser.ConfigParser()
 
@@ -38,9 +38,15 @@ except Exception as e:
 def main():
     with uc.Chrome(headless=args.headless) as driver:
         abuser = LectureAbuser(driver)
-        # В случае ошибки делаем скриншот
-        if not abuser.run(videoUrls=videoUrls, config=config):
-            driver.get_screenshot_as_file("error.png")
+        abuser.run(
+            videoUrls=videoUrls,
+            login=config.get('Account', 'Login'),
+            password=config.get('Account', 'Password'),
+            channelName=config.get('Account', 'ChannelName'),
+            initComment=config.get('General', 'InitComment'),
+            updComment=config.get('General', 'UpdComment'),
+            ignoreOnError=config.getboolean('General', 'IgnoreOnError')
+        )
 
     os.system("pause")
 
