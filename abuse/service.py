@@ -18,17 +18,20 @@ class YTService:
         try:
             self.driver.get("https://accounts.google.com/signin")
 
-            loginBox = wait(self.driver, 15).until(
-                EC.presence_of_element_located((By.NAME, 'identifier')))
-            loginBox.send_keys(login)
+            if not login or not password:
+                print('Логин и/или пароль не обнаружены, зайдите в аккаунт самостоятельно.')
+            else:
+                loginBox = wait(self.driver, 15).until(
+                    EC.presence_of_element_located((By.NAME, 'identifier')))
+                loginBox.send_keys(login)
 
-            self.driver.find_element(By.ID, 'identifierNext').click()
+                self.driver.find_element(By.ID, 'identifierNext').click()
 
-            passwordBox = wait(self.driver, 15).until(
-                EC.element_to_be_clickable((By.NAME, 'password')))
-            passwordBox.send_keys(password)
+                passwordBox = wait(self.driver, 15).until(
+                    EC.element_to_be_clickable((By.NAME, 'password')))
+                passwordBox.send_keys(password)
 
-            self.driver.find_element(By.ID, 'passwordNext').click()
+                self.driver.find_element(By.ID, 'passwordNext').click()
 
             # Ждем перенаправления на стр. аккаунта (сразу или после того того, как пользователь пройдет двухфакторку)
             wait(self.driver, 120).until(
