@@ -39,9 +39,7 @@ class LectureAbuser():
 
         print('Выбор канала...')
 
-        if not self.service.select_channel(channelName):
-            print('Не удалось выбрать канал YouTube')
-            return False
+        self.service.select_channel(channelName)
 
         time.sleep(1)
 
