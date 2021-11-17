@@ -36,7 +36,7 @@ except Exception as e:
 
 
 def main():
-    with uc.Chrome(headless=args.headless) as driver:
+    with uc.Chrome(version_main=95, headless=args.headless) as driver:
         abuser = LectureAbuser(driver)
         abuser.run(
             videoUrls=videoUrls,
