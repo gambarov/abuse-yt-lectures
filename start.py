@@ -9,7 +9,7 @@ from abuse.abuser import LectureAbuser
 import undetected_chromedriver.v2 as uc
 
 
-logging.basicConfig(filename='logs/app.log', filemode='w', level=logging.INFO)
+logging.basicConfig(filename='logs/app.log', level=logging.INFO)
 
 config = configparser.ConfigParser()
 
