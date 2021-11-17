@@ -1,1 +1,2 @@
-undetected_chromedriver==3.0.3
+undetected_chromedriver==3.0.4
+selenium==4.0.0
