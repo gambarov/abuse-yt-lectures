@@ -58,7 +58,8 @@ class YTService:
     def get_video_duration(self):
         try:
             duration = wait(self.driver, 15).until(EC.presence_of_element_located(
-                (By.XPATH, "//span[@class='ytp-time-duration']"))).text
+                (By.XPATH, ".//span[contains(@class,'time-status')]"))).text
+            duration.strip()
             # Если длительность только в минутах и секундах
             try:
                 t = time.strptime(duration, '%M:%S')
