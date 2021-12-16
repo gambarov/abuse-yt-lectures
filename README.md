@@ -3,6 +3,7 @@
 2. Ввести следующие команды:
 ```
 git clone https://github.com/gambarov/abuse-yt-lectures
+cd abuse-yt-lectures
 pip install -r requirements.txt
 ```
 3. Настроить скрипт в файле config.ini 
